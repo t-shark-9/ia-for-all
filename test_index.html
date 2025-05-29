@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shark Chat Tests</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background-color: #f6f8fa;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-suite {
+            background: white;
+            border: 1px solid #d1d9e0;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            padding: 16px;
+        }
+        .test-suite h2 {
+            margin: 0 0 12px 0;
+            color: #24292f;
+        }
+        .test-case {
+            padding: 8px 0;
+            border-bottom: 1px solid #f6f8fa;
+        }
+        .test-case:last-child {
+            border-bottom: none;
+        }
+        .test-pass {
+            color: #1a7f37;
+        }
+        .test-fail {
+            color: #cf222e;
+        }
+        .test-summary {
+            background: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #d1d9e0;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Shark Chat Test Suite</h1>
+        
+        <iframe id="test-frame" src="index.html"></iframe>
+        
+        <div id="test-summary" class="test-summary">
+            <strong>Running tests...</strong>
+        </div>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = [];
+                this.iframe = document.getElementById('test-frame');
+                this.doc = null;
+                this.window = null;
+            }
+
+            async init() {
+                return new Promise((resolve) => {
+                    this.iframe.onload = () => {
+                        this.doc = this.iframe.contentDocument;
+                        this.window = this.iframe.contentWindow;
+                        resolve();
+                    };
+                });
+            }
+
+            addTest(suiteName, testName, testFn) {
+                this.tests.push({ suiteName, testName, testFn });
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message);
+                }
+            }
+
+            assertEqual(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(`${message}: expected ${expected}, got ${actual}`);
+                }
+            }
+
+            assertExists(element, message) {
+                if (!element) {
+                    throw new Error(message);
+                }
+            }
+
+            async runTests() {
+                const suites = {};
+                
+                for (const test of this.tests) {
+                    if (!suites[test.suiteName]) {
+                        suites[test.suiteName] = [];
+                    }
+                    
+                    try {
+                        await test.testFn.call(this);
+                        suites[test.suiteName].push({
+                            name: test.testName,
+                            status: 'pass',
+                            error: null
+                        });
+                    } catch (error) {
+                        suites[test.suiteName].push({
+                            name: test.testName,
+                            status: 'fail',
+                            error: error.message
+                        });
+                    }
+                }
+
+                this.renderResults(suites);
+            }
+
+            renderResults(suites) {
+                const resultsContainer = document.getElementById('test-results');
+                const summaryContainer = document.getElementById('test-summary');
+                
+                let totalTests = 0;
+                let passedTests = 0;
+                
+                resultsContainer.innerHTML = '';
+                
+                for (const [suiteName, tests] of Object.entries(suites)) {
+                    const suiteDiv = document.createElement('div');
+                    suiteDiv.className = 'test-suite';
+                    
+                    const suiteTitle = document.createElement('h2');
+                    suiteTitle.textContent = suiteName;
+                    suiteDiv.appendChild(suiteTitle);
+                    
+                    for (const test of tests) {
+                        totalTests++;
+                        if (test.status === 'pass') passedTests++;
+                        
+                        const testDiv = document.createElement('div');
+                        testDiv.className = `test-case test-${test.status}`;
+                        testDiv.innerHTML = `
+                            <strong>${test.status === 'pass' ? '✓' : '✗'} ${test.name}</strong>
+                            ${test.error ? `<br><small>${test.error}</small>` : ''}
+                        `;
+                        suiteDiv.appendChild(testDiv);
+                    }
+                    
+                    resultsContainer.appendChild(suiteDiv);
+                }
+                
+                summaryContainer.innerHTML = `
+                    <strong>Tests: ${passedTests}/${totalTests} passed</strong>
+                    ${passedTests === totalTests ? ' 🎉' : ''}
+                `;
+            }
+
+            // Helper methods for testing
+            querySelector(selector) {
+                return this.doc.querySelector(selector);
+            }
+
+            querySelectorAll(selector) {
+                return this.doc.querySelectorAll(selector);
+            }
+
+            getComputedStyle(element) {
+                return this.window.getComputedStyle(element);
+            }
+
+            simulateEvent(element, eventType, options = {}) {
+                const event = new this.window.Event(eventType, { bubbles: true, ...options });
+                Object.assign(event, options);
+                element.dispatchEvent(event);
+            }
+
+            simulateKeyEvent(element, key, eventType = 'keydown', options = {}) {
+                const event = new this.window.KeyboardEvent(eventType, {
+                    key,
+                    bubbles: true,
+                    ...options
+                });
+                element.dispatchEvent(event);
+            }
+        }
+
+        // Initialize test runner
+        const testRunner = new TestRunner();
+
+        // DOM Structure Tests
+        testRunner.addTest('DOM Structure', 'Sidebar exists', function() {
+            const sidebar = this.querySelector('.sidebar');
+            this.assertExists(sidebar, 'Sidebar should exist');
+        });
+
+        testRunner.addTest('DOM Structure', 'Main content exists', function() {
+            const mainContent = this.querySelector('.main-content');
+            this.assertExists(mainContent, 'Main content should exist');
+        });
+
+        testRunner.addTest('DOM Structure', 'Message input exists', function() {
+            const input = this.querySelector('.message-input');
+            this.assertExists(input, 'Message input should exist');
+        });
+
+        testRunner.addTest('DOM Structure', 'Send button exists', function() {
+            const sendBtn = this.querySelector('#send-btn');
+            this.assertExists(sendBtn, 'Send button should exist');
+        });
+
+        testRunner.addTest('DOM Structure', 'File input exists', function() {
+            const fileInput = this.querySelector('#file-input');
+            this.assertExists(fileInput, 'File input should exist');
+        });
+
+        // CSS Styling Tests
+        testRunner.addTest('CSS Styling', 'Body has correct background color', function() {
+            const body = this.querySelector('body');
+            const styles = this.getComputedStyle(body);
+            this.assertEqual(styles.backgroundColor, 'rgb(13, 17, 23)', 'Body background should be dark');
+        });
+
+        testRunner.addTest('CSS Styling', 'Sidebar has correct width', function() {
+            const sidebar = this.querySelector('.sidebar');
+            const styles = this.getComputedStyle(sidebar);
+            this.assertEqual(styles.width, '280px', 'Sidebar should be 280px wide');
+        });
+
+        testRunner.addTest('CSS Styling', 'Send button is initially disabled', function() {
+            const sendBtn = this.querySelector('#send-btn');
+            this.assert(sendBtn.disabled, 'Send button should be disabled initially');
+        });
+
+        // JavaScript Functionality Tests
+        testRunner.addTest('JavaScript Functionality', 'Auto-resize function exists', function() {
+            this.assert(typeof this.window.autoResize === 'function', 'autoResize function should exist');
+        });
+
+        testRunner.addTest('JavaScript Functionality', 'Send message function exists', function() {
+            this.assert(typeof this.window.sendMessage === 'function', 'sendMessage function should exist');
+        });
+
+        testRunner.addTest('JavaScript Functionality', 'Handle key down function exists', function() {
+            this.assert(typeof this.window.handleKeyDown === 'function', 'handleKeyDown function should exist');
+        });
+
+        testRunner.addTest('JavaScript Functionality', 'Handle file select function exists', function() {
+            this.assert(typeof this.window.handleFileSelect === 'function', 'handleFileSelect function should exist');
+        });
+
+        testRunner.addTest('JavaScript Functionality', 'Send button enables when text is entered', function() {
+            const textarea = this.querySelector('.message-input');
+            const sendBtn = this.querySelector('#send-btn');
+            
+            textarea.value = 'test message';
+            this.simulateEvent(textarea, 'input');
+            
+            this.assert(!sendBtn.disabled, 'Send button should be enabled when text is present');
+        });
+
+        testRunner.addTest('JavaScript Functionality', 'Send button disables when text is cleared', function() {
+            const textarea = this.querySelector('.message-input');
+            const sendBtn = this.querySelector('#send-btn');
+            
+            textarea.value = '';
+            this.simulateEvent(textarea, 'input');
+            
+            this.assert(sendBtn.disabled, 'Send button should be disabled when text is empty');
+        });
+
+        testRunner.addTest('JavaScript Functionality', 'Enter key triggers send message', function() {
+            const textarea = this.querySelector('.message-input');
+            let sendCalled = false;
+            
+            // Mock sendMessage
+            const originalSend = this.window.sendMessage;
+            this.window.sendMessage = () => { sendCalled = true; };
+            
+            textarea.value = 'test';
+            this.simulateKeyEvent(textarea, 'Enter');
+            
+            this.assert(sendCalled, 'Enter key should trigger sendMessage');
+            
+            // Restore original function
+            this.window.sendMessage = originalSend;
+        });
+
+        testRunner.addTest('JavaScript Functionality', 'Shift+Enter does not trigger send', function() {
+            const textarea = this.querySelector('.message-input');
+            let sendCalled = false;
+            
+            // Mock sendMessage
+            const originalSend = this.window.sendMessage;
+            this.window.sendMessage = () => { sendCalled = true; };
+            
+            textarea.value = 'test';
+            this.simulateKeyEvent(textarea, 'Enter', 'keydown', { shiftKey: true });
+            
+            this.assert(!sendCalled, 'Shift+Enter should not trigger sendMessage');
+            
+            // Restore original function
+            this.window.sendMessage = originalSend;
+        });
+
+        // Interactive Behavior Tests
+        testRunner.addTest('Interactive Behavior', 'Attach button clicks file input', function() {
+            const attachBtn = this.querySelector('.attach-btn');
+            const fileInput = this.querySelector('#file-input');
+            
+            let clickCalled = false;
+            const originalClick = fileInput.click;
+            fileInput.click = () => { clickCalled = true; };
+            
+            this.simulateEvent(attachBtn, 'click');
+            
+            this.assert(clickCalled, 'Attach button should trigger file input click');
+            
+            fileInput.click = originalClick;
+        });
+
+        testRunner.addTest('Interactive Behavior', 'Chat items exist', function() {
+            const chatItems = this.querySelectorAll('.chat-item');
+            this.assert(chatItems.length > 0, 'Chat history should have items');
+        });
+
+        testRunner.addTest('Interactive Behavior', 'Suggestion cards exist', function() {
+            const suggestions = this.querySelectorAll('.suggestion-card');
+            this.assertEqual(suggestions.length, 4, 'Should have 4 suggestion cards');
+        });
+
+        // Accessibility Tests
+        testRunner.addTest('Accessibility', 'Message input has placeholder', function() {
+            const input = this.querySelector('.message-input');
+            this.assert(input.placeholder.length > 0, 'Message input should have placeholder text');
+        });
+
+        testRunner.addTest('Accessibility', 'File input has correct type', function() {
+            const fileInput = this.querySelector('#file-input');
+            this.assertEqual(fileInput.type, 'file', 'File input should have type="file"');
+        });
+
+        testRunner.addTest('Accessibility', 'File input allows multiple files', function() {
+            const fileInput = this.querySelector('#file-input');
+            this.assert(fileInput.hasAttribute('multiple'), 'File input should allow multiple files');
+        });
+
+        testRunner.addTest('Accessibility', 'Page has proper title', function() {
+            const title = this.doc.title;
+            this.assert(title.includes('Shark Chat'), 'Page should have descriptive title');
+        });
+
+        // Layout Tests
+        testRunner.addTest('Layout', 'Body uses flexbox', function() {
+            const body = this.querySelector('body');
+            const styles = this.getComputedStyle(body);
+            this.assertEqual(styles.display, 'flex', 'Body should use flexbox layout');
+        });
+
+        testRunner.addTest('Layout', 'Main content is flexible', function() {
+            const mainContent = this.querySelector('.main-content');
+            const styles = this.getComputedStyle(mainContent);
+            this.assertEqual(styles.flex, '1 1 0%', 'Main content should be flexible');
+        });
+
+        // Run all tests when iframe loads
+        testRunner.init().then(() => {
+            testRunner.runTests();
+        });
+    </script>
+</body>
+</html>

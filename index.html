@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shark Chat - GitHub Copilot Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0d1117;
+            color: #f0f6fc;
+            height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 280px;
+            background-color: #161b22;
+            border-right: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .shark-logo {
+            font-size: 20px;
+        }
+
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .new-chat-btn {
+            margin: 16px;
+            padding: 8px 12px;
+            background-color: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .new-chat-btn:hover {
+            background-color: #2ea043;
+        }
+
+        .chat-history {
+            flex: 1;
+            padding: 0 16px;
+            overflow-y: auto;
+        }
+
+        .chat-item {
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #8b949e;
+        }
+
+        .chat-item:hover {
+            background-color: #21262d;
+        }
+
+        .chat-item.active {
+            background-color: #21262d;
+            color: #f0f6fc;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .model-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background-color: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .model-selector:hover {
+            border-color: #8b949e;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+
+        .empty-state {
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .shark-icon {
+            font-size: 80px;
+            margin-bottom: 24px;
+            opacity: 0.8;
+        }
+
+        .welcome-text {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .welcome-subtitle {
+            color: #8b949e;
+            margin-bottom: 32px;
+            font-size: 16px;
+        }
+
+        .input-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px 24px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #1f6feb;
+            box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.1);
+        }
+
+        .input-area {
+            display: flex;
+            align-items: flex-end;
+            padding: 12px;
+            gap: 8px;
+        }
+
+        .attach-btn {
+            background: none;
+            border: none;
+            color: #8b949e;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .attach-btn:hover {
+            background-color: #21262d;
+            color: #f0f6fc;
+        }
+
+        .message-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #f0f6fc;
+            font-size: 16px;
+            resize: none;
+            min-height: 24px;
+            max-height: 200px;
+            line-height: 24px;
+            outline: none;
+        }
+
+        .message-input::placeholder {
+            color: #8b949e;
+        }
+
+        .send-btn {
+            background-color: #238636;
+            border: none;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background-color: #2ea043;
+        }
+
+        .send-btn:disabled {
+            background-color: #30363d;
+            cursor: not-allowed;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .suggestions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 32px;
+            max-width: 800px;
+        }
+
+        .suggestion-card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .suggestion-card:hover {
+            border-color: #8b949e;
+            background-color: #21262d;
+        }
+
+        .suggestion-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }        .suggestion-desc {
+            color: #8b949e;
+            font-size: 12px;
+        }
+
+        /* VS Code Connection Panel */
+        .connection-panel {
+            margin: 16px;
+            padding: 12px;
+            background-color: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .connection-status {
+            margin-bottom: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .connection-status.connected {
+            color: #3fb950;
+        }
+
+        .connection-status.disconnected {
+            color: #f85149;
+        }
+
+        .connection-status.connecting {
+            color: #f0f6fc;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: currentColor;
+        }
+
+        .connect-btn {
+            width: 100%;
+            padding: 6px 12px;
+            background-color: #238636;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .connect-btn:hover {
+            background-color: #2ea043;
+        }
+
+        .connect-btn:disabled {
+            background-color: #30363d;
+            cursor: not-allowed;
+        }
+
+        /* Chat Messages */
+        .chat-messages {
+            padding: 16px;
+            flex: 1;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .message.user {
+            background-color: #0969da;
+            color: white;
+            margin-left: 20%;
+        }
+
+        .message.system {
+            background-color: #21262d;
+            color: #8b949e;
+            font-style: italic;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span class="shark-logo">🦈</span>
+            <span class="sidebar-title">Shark Chat</span>
+        </div>        <button class="new-chat-btn">
+            <span>+</span>
+            New chat
+        </button>
+        
+        <!-- VS Code Connection Panel -->
+        <div class="connection-panel">
+            <div class="connection-status connecting" id="connection-status">
+                <span class="status-dot"></span>
+                <span id="status-text">Connecting...</span>
+            </div>
+            <button class="connect-btn" onclick="connectToVSCode()" id="connect-btn">Reconnect</button>
+        </div>
+        
+        <div class="chat-history">
+            <div class="chat-item active">Today's conversation</div>
+            <div class="chat-item">Previous chat 1</div>
+            <div class="chat-item">Previous chat 2</div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>Shark Chat</h1>
+            <div class="model-selector">
+                <span>GPT-4</span>
+                <span>▼</span>
+            </div>
+        </div>
+
+        <div class="chat-area">
+            <div class="empty-state">
+                <div class="shark-icon">🦈</div>
+                <h2 class="welcome-text">How can I help you today?</h2>
+                <p class="welcome-subtitle">I'm here to help with your coding questions and tasks</p>
+                
+                <div class="suggestions">
+                    <div class="suggestion-card">
+                        <div class="suggestion-title">Explain code</div>
+                        <div class="suggestion-desc">Help understand complex code</div>
+                    </div>
+                    <div class="suggestion-card">
+                        <div class="suggestion-title">Fix bugs</div>
+                        <div class="suggestion-desc">Debug and resolve issues</div>
+                    </div>
+                    <div class="suggestion-card">
+                        <div class="suggestion-title">Write tests</div>
+                        <div class="suggestion-desc">Generate unit tests</div>
+                    </div>
+                    <div class="suggestion-card">
+                        <div class="suggestion-title">Refactor code</div>
+                        <div class="suggestion-desc">Improve code structure</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <div class="input-wrapper">
+                <div class="input-area">
+                    <button class="attach-btn" onclick="document.getElementById('file-input').click()">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8.75 2.75a.75.75 0 0 0-1.5 0v5.69L6.03 7.22a.751.751 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l2.5-2.5a.751.751 0 0 0-1.06-1.06L8.75 8.44V2.75Z"></path>
+                            <path d="M2.5 12a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 1 1 0v1.5h12v-1.5a.5.5 0 0 1 1 0v2a.5.5 0 0 1-.5.5h-13Z"></path>
+                        </svg>
+                    </button>
+                    <textarea 
+                        class="message-input" 
+                        placeholder="Ask Shark Chat a question..."
+                        rows="1"
+                        onkeydown="handleKeyDown(event)"
+                        oninput="autoResize(this)"
+                    ></textarea>
+                    <button class="send-btn" id="send-btn" disabled onclick="sendMessage()">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M2.87 2.298a.75.75 0 0 0-.812 1.021L3.39 6.624a1 1 0 0 0 .928.626H8.5a.75.75 0 0 1 0 1.5H4.318a1 1 0 0 0-.928.626L2.058 12.68a.75.75 0 0 0 .812 1.021l11.857-5.592a.75.75 0 0 0 0-1.382L2.87 2.298Z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <input type="file" id="file-input" class="file-input" multiple onchange="handleFileSelect(event)">
+        </div>
+    </div>    <script>
+        // HTTP connection variables
+        let isConnected = false;
+        let connectionCheckInterval = null;
+
+        // HTTP functions instead of WebSocket
+        function connectToVSCode() {
+            const statusElement = document.getElementById('status-text');
+            const statusContainer = document.getElementById('connection-status');
+            const connectBtn = document.getElementById('connect-btn');
+            
+            // Update UI to show connecting
+            statusElement.textContent = 'Connecting...';
+            statusContainer.className = 'connection-status connecting';
+            connectBtn.disabled = true;
+            
+            // Test connection to server
+            fetch('http://localhost:8080/get-message')
+                .then(response => {
+                    if (response.ok) {
+                        isConnected = true;
+                        statusElement.textContent = 'Connected to VS Code';
+                        statusContainer.className = 'connection-status connected';
+                        connectBtn.disabled = false;
+                        connectBtn.textContent = 'Disconnect';
+                        console.log('🦈 Connected to Shark Chat server');
+                    } else {
+                        throw new Error('Server not responding');
+                    }
+                })
+                .catch(error => {
+                    console.error('Connection failed:', error);
+                    isConnected = false;
+                    statusElement.textContent = 'Connection Failed';
+                    statusContainer.className = 'connection-status disconnected';
+                    connectBtn.disabled = false;
+                    connectBtn.textContent = 'Retry Connection';
+                });
+        }
+
+        function disconnectFromVSCode() {
+            isConnected = false;
+            const statusElement = document.getElementById('status-text');
+            const statusContainer = document.getElementById('connection-status');
+            const connectBtn = document.getElementById('connect-btn');
+            
+            statusElement.textContent = 'Disconnected';
+            statusContainer.className = 'connection-status disconnected';
+            connectBtn.textContent = 'Connect';
+        }
+
+        function sendTextToVSCode(text) {
+            if (!isConnected) {
+                return false;
+            }
+
+            const message = {
+                type: 'insertText',
+                text: text,
+                timestamp: new Date().toISOString()
+            };
+
+            return fetch('http://localhost:8080/send-message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(message)
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('📝 Sent to VS Code:', text);
+                    return true;
+                } else {
+                    throw new Error('Failed to send message');
+                }
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+                return false;
+            });
+        }
+
+        // Enhanced connect button handler
+        function handleConnectButton() {
+            if (isConnected) {
+                disconnectFromVSCode();
+            } else {
+                connectToVSCode();
+            }
+        }
+
+        // Update the onclick handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const connectBtn = document.getElementById('connect-btn');
+            connectBtn.onclick = handleConnectButton;
+        });
+
+        // Existing functions with HTTP integration
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+            
+            const sendBtn = document.getElementById('send-btn');
+            sendBtn.disabled = textarea.value.trim() === '';
+        }
+
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function sendMessage() {
+            const textarea = document.querySelector('.message-input');
+            const message = textarea.value.trim();
+            
+            if (message) {
+                console.log('Sending message:', message);
+                
+                // Send to VS Code
+                sendTextToVSCode(message + '\n')
+                    .then(sent => {
+                        if (sent) {
+                            console.log('✅ Message sent to VS Code successfully');
+                            showNotification('Message sent to VS Code!', 'success');
+                        } else {
+                            console.log('❌ Failed to send to VS Code');
+                            showNotification('Failed to send to VS Code', 'error');
+                        }
+                    });
+                
+                textarea.value = '';
+                autoResize(textarea);
+            }
+        }
+
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            console.log('Selected files:', files.map(f => f.name));
+            
+            // Send file names to VS Code
+            if (files.length > 0) {
+                const fileList = files.map(f => f.name).join(', ');
+                const fileMessage = `// Selected files: ${fileList}\n`;
+                sendTextToVSCode(fileMessage);
+            }
+        }
+
+        function showNotification(message, type) {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 16px;
+                border-radius: 6px;
+                color: white;
+                font-size: 14px;
+                z-index: 1000;
+                background-color: ${type === 'success' ? '#238636' : '#da3633'};
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 3000);
+        }
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const textarea = document.querySelector('.message-input');
+            autoResize(textarea);
+            
+            // Try to connect to VS Code automatically
+            setTimeout(() => {
+                connectToVSCode();
+            }, 1000);
+            
+            // Check connection status every 10 seconds
+            connectionCheckInterval = setInterval(() => {
+                if (isConnected) {
+                    // Test if server is still responding
+                    fetch('http://localhost:8080/get-message')
+                        .catch(() => {
+                            isConnected = false;
+                            const statusElement = document.getElementById('status-text');
+                            const statusContainer = document.getElementById('connection-status');
+                            statusElement.textContent = 'Connection Lost';
+                            statusContainer.className = 'connection-status disconnected';
+                        });
+                } else {
+                    // Try to reconnect
+                    connectToVSCode();
+                }
+            }, 10000);
+        });
+    </script>
+</body>
+</html>
