@@ -443,11 +443,14 @@
             <input type="file" id="file-input" class="file-input" multiple onchange="handleFileSelect(event)">
         </div>
     </div>    <script>
-        // HTTP connection variables
+        // WebSocket connection variables
+        let ws = null;
         let isConnected = false;
         let connectionCheckInterval = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
 
-        // HTTP functions instead of WebSocket
+        // WebSocket functions
         function connectToVSCode() {
             const statusElement = document.getElementById('status-text');
             const statusContainer = document.getElementById('connection-status');
@@ -458,32 +461,79 @@
             statusContainer.className = 'connection-status connecting';
             connectBtn.disabled = true;
             
-            // Test connection to server
-            fetch('http://localhost:8080/get-message')
-                .then(response => {
-                    if (response.ok) {
-                        isConnected = true;
-                        statusElement.textContent = 'Connected to VS Code';
-                        statusContainer.className = 'connection-status connected';
-                        connectBtn.disabled = false;
-                        connectBtn.textContent = 'Disconnect';
-                        console.log('🦈 Connected to Shark Chat server');
-                    } else {
-                        throw new Error('Server not responding');
+            try {
+                // Create WebSocket connection
+                ws = new WebSocket('ws://localhost:8080');
+                
+                ws.onopen = function(event) {
+                    console.log('🦈 Connected to Shark Chat server');
+                    isConnected = true;
+                    reconnectAttempts = 0;
+                    statusElement.textContent = 'Connected to VS Code';
+                    statusContainer.className = 'connection-status connected';
+                    connectBtn.disabled = false;
+                    connectBtn.textContent = 'Disconnect';
+                    
+                    showNotification('Connected to Shark Chat server!', 'success');
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('📨 Received from server:', data);
+                        
+                        if (data.type === 'welcome') {
+                            console.log('Welcome message:', data.message);
+                        }
+                    } catch (error) {
+                        console.error('Error parsing server message:', error);
                     }
-                })
-                .catch(error => {
-                    console.error('Connection failed:', error);
+                };
+                
+                ws.onclose = function(event) {
+                    console.log('🔌 Disconnected from server');
+                    isConnected = false;
+                    statusElement.textContent = 'Disconnected';
+                    statusContainer.className = 'connection-status disconnected';
+                    connectBtn.disabled = false;
+                    connectBtn.textContent = 'Reconnect';
+                    
+                    // Auto-reconnect logic
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        setTimeout(() => {
+                            reconnectAttempts++;
+                            statusElement.textContent = `Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`;
+                            connectToVSCode();
+                        }, 2000 * reconnectAttempts);
+                    } else {
+                        showNotification('Connection lost. Please reconnect manually.', 'error');
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('❌ WebSocket error:', error);
                     isConnected = false;
                     statusElement.textContent = 'Connection Failed';
                     statusContainer.className = 'connection-status disconnected';
                     connectBtn.disabled = false;
                     connectBtn.textContent = 'Retry Connection';
-                });
+                };
+                
+            } catch (error) {
+                console.error('Failed to create WebSocket connection:', error);
+                statusElement.textContent = 'Connection Failed';
+                statusContainer.className = 'connection-status disconnected';
+                connectBtn.disabled = false;
+                connectBtn.textContent = 'Retry Connection';
+            }
         }
 
         function disconnectFromVSCode() {
+            if (ws) {
+                ws.close();
+            }
             isConnected = false;
+            reconnectAttempts = maxReconnectAttempts; // Prevent auto-reconnect
             const statusElement = document.getElementById('status-text');
             const statusContainer = document.getElementById('connection-status');
             const connectBtn = document.getElementById('connect-btn');
@@ -494,8 +544,9 @@
         }
 
         function sendTextToVSCode(text) {
-            if (!isConnected) {
-                return false;
+            if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) {
+                showNotification('Not connected to VS Code', 'error');
+                return Promise.resolve(false);
             }
 
             const message = {
@@ -504,25 +555,15 @@
                 timestamp: new Date().toISOString()
             };
 
-            return fetch('http://localhost:8080/send-message', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(message)
-            })
-            .then(response => {
-                if (response.ok) {
-                    console.log('📝 Sent to VS Code:', text);
-                    return true;
-                } else {
-                    throw new Error('Failed to send message');
-                }
-            })
-            .catch(error => {
+            try {
+                ws.send(JSON.stringify(message));
+                console.log('📝 Sent to VS Code:', text);
+                return Promise.resolve(true);
+            } catch (error) {
                 console.error('Error sending message:', error);
-                return false;
-            });
+                showNotification('Failed to send message', 'error');
+                return Promise.resolve(false);
+            }
         }
 
         // Enhanced connect button handler
@@ -615,9 +656,7 @@
                     document.body.removeChild(notification);
                 }
             }, 3000);
-        }
-
-        // Initialize everything when page loads
+        }        // Initialize everything when page loads
         document.addEventListener('DOMContentLoaded', function() {
             const textarea = document.querySelector('.message-input');
             autoResize(textarea);
@@ -626,24 +665,6 @@
             setTimeout(() => {
                 connectToVSCode();
             }, 1000);
-            
-            // Check connection status every 10 seconds
-            connectionCheckInterval = setInterval(() => {
-                if (isConnected) {
-                    // Test if server is still responding
-                    fetch('http://localhost:8080/get-message')
-                        .catch(() => {
-                            isConnected = false;
-                            const statusElement = document.getElementById('status-text');
-                            const statusContainer = document.getElementById('connection-status');
-                            statusElement.textContent = 'Connection Lost';
-                            statusContainer.className = 'connection-status disconnected';
-                        });
-                } else {
-                    // Try to reconnect
-                    connectToVSCode();
-                }
-            }, 10000);
         });
     </script>
 </body>

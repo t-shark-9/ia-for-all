@@ -1,24 +1,49 @@
-# 🦈 Shark Chat - Website to VS Code Integration
+# 🦈 Shark Chat - Real-time VS Code Integration
 
-This setup allows users to type in your website and have that text appear directly in your VS Code editor!
+Eine moderne Chat-Interface, die direkt mit VS Code kommuniziert und Text in Echtzeit einfügt!
 
-## Quick Setup Guide
+## ✨ Was ist neu in der Website:
 
-### 1. Install Node.js Dependencies
-```powershell
-cd c:\Tjark\website
+- **Connection Panel** in der Sidebar mit VS Code Verbindungsstatus
+- **Enhanced JavaScript** mit WebSocket-Kommunikation  
+- **Visual Notifications** wenn Nachrichten gesendet werden
+- **Automatic Reconnection** falls die Verbindung abbricht
+- **Real-time Status** mit visuellen Indikatoren
+
+## 🚀 Setup-Anleitung:
+
+### 1. Dependencies installieren
+```bash
+cd /workspaces/ia-for-all
 npm install
 ```
 
-### 2. Start the Server
-```powershell
+### 2. Server starten
+```bash
 npm start
 ```
-The server will run on `http://localhost:8080`
+Der Server läuft jetzt auf http://localhost:8080
 
-### 3. Install VS Code Extension
+### 3. VS Code Extension installieren
+1. Öffne VS Code
+2. Drücke `Ctrl+Shift+P`
+3. Tippe "Extensions: Install from VSIX..."
+4. Navigiere zu `vscode-extension/shark-chat-receiver-1.0.0.vsix`
+5. Installiere die Extension
 
-#### Option A: Install from folder
+### 4. Extension starten
+1. In VS Code, drücke `Ctrl+Shift+P`
+2. Tippe "🦈 Start Shark Chat Receiver"
+3. Du siehst "🦈 Shark Chat: Connected" in der Statusleiste
+
+### 5. Testen! 🎉
+1. Öffne http://localhost:8080 im Browser
+2. Tippe eine Nachricht und drücke Enter
+3. Sieh zu, wie sie in VS Code erscheint!
+
+## 🎯 Key Features:
+
+### Website Features:
 1. Open VS Code
 2. Press `Ctrl+Shift+P`
 3. Type "Extensions: Install from VSIX..."
