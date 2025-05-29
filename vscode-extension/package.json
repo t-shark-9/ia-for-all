@@ -1,0 +1,34 @@
+{
+  "name": "shark-chat-receiver",
+  "displayName": "🦈 Shark Chat Receiver",
+  "description": "Receives messages from Shark Chat website and inserts them at cursor position",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "shark-chat.start",
+        "title": "🦈 Start Shark Chat Receiver"
+      },
+      {
+        "command": "shark-chat.stop",
+        "title": "🦈 Stop Shark Chat Receiver"
+      }
+    ]
+  },
+  "scripts": {
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.60.0",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  }
+}
